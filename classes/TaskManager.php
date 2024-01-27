@@ -1,85 +1,56 @@
 <?php
 
+require_once './classes/Status.php';
 
-enum Status {
-    case COMPLETED;
-    case NOT_COMPLETED;
-
-}
 class TaskManager {
 
     private string $filename;
-
     private array $tasks;
-
 
     /**
      * @throws Exception
      */
     public function __construct(string $filename) {
-        if (!file_exists($filename)) {
-            throw new Exception("Файл $filename не існує");
-        }
 
-        $this->filename = $filename;
-
-        $content = file_get_contents($this->filename);
-        $this->tasks = unserialize($content);
-        if (!$this->tasks) {
-            $this->tasks = [];
-        }
-
+        $this->setFilename($filename);
+        $content = file_get_contents($this->getFilename());
+        $this->setTasks(unserialize($content) ?: []);
     }
 
     /**
      * @throws Exception
      */
-    public function addTask(string $taskName, int $priority): void
-    {
-
+    public function addTask(string $taskName, int $priority): void {
         $task = [
             "name" => $taskName,
             "priority" => $priority,
             "status" => Status::NOT_COMPLETED,
             "id" => uniqid()
-       ];
+        ];
 
-        $found = false;
-        foreach ($this->tasks as $t) {
-            if ($t["name"] == $taskName && $t["priority"] == $priority) {
-                $found = true;
-                break;
-            }
-        }
-
-        if (!$found) {
-
-            $this->tasks[] = $task;
-
+        if (!$this->isTaskExists($taskName, $priority)) {
+            $this->setTasks(array_merge($this->getTasks(), [$task]));
             $this->saveTasks();
         }
     }
 
-
     /**
      * @throws Exception
      */
-    public function deleteTask(string $taskId): void
-    {
+    public function deleteTask(string $taskId): void {
         $taskIndex = $this->findTaskIndexById($taskId);
 
         if ($taskIndex !== false) {
             unset($this->tasks[$taskIndex]);
-            $this->tasks = array_values($this->tasks);
+            $this->setTasks(array_values($this->getTasks()));
             $this->saveTasks();
         } else {
             throw new Exception("Завдання з ID $taskId не знайдено.");
         }
     }
 
-    private function findTaskIndexById(string $taskId): int|false
-    {
-        foreach ($this->tasks as $index => $task) {
+    private function findTaskIndexById(string $taskId): int|false {
+        foreach ($this->getTasks() as $index => $task) {
             if ($task["id"] == $taskId) {
                 return $index;
             }
@@ -88,43 +59,72 @@ class TaskManager {
         return false;
     }
 
-    public function getTasks():array {
-
-        $tasks = $this->tasks;
-
-        usort($tasks, function($a, $b) {
-            return $b["priority"] - $a["priority"];
-        });
-
-        return $tasks;
-    }
-
 
     /**
      * @throws Exception
      */
-    public function completeTask(string $taskId): void
-    {
-        for ($i = 0; $i < count($this->tasks); $i++) {
-
-            if ($this->tasks[$i]["id"] == $taskId) {
-
+    public function completeTask(string $taskId): void {
+        foreach ($this->getTasks() as $i => $task) {
+            if ($task["id"] == $taskId) {
                 $this->tasks[$i]["status"] = Status::COMPLETED;
-
                 $this->saveTasks();
-
                 break;
             }
         }
     }
 
-
     /**
      * @throws Exception
      */
     private function saveTasks(): void {
-        $content = serialize($this->tasks);
-        file_put_contents($this->filename, $content);
+        $content = serialize($this->getTasks());
+        file_put_contents($this->getFilename(), $content);
+    }
 
+    private function isTaskExists(string $taskName, int $priority): bool {
+        foreach ($this->getTasks() as $task) {
+            if ($task["name"] == $taskName && $task["priority"] == $priority) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return string
+     */
+    public function getFilename(): string {
+        return $this->filename;
+    }
+
+    /**
+     * @param string $filename
+     * @throws Exception
+     */
+    public function setFilename(string $filename): void {
+        $this->filename = $filename;
+        if (!file_exists($filename)) {
+            throw new Exception("Файл $filename не існує");
+        }
+    }
+
+    /**
+     * @return array
+     */
+    public function getTasks(): array {
+        $tasks = $this->tasks;
+
+        usort($tasks, function ($a, $b) {
+            return $b["priority"] - $a["priority"];
+        });
+        return $this->tasks;
+    }
+
+    /**
+     * @param array $tasks
+     */
+    public function setTasks(array $tasks): void {
+        $this->tasks = $tasks;
     }
 }

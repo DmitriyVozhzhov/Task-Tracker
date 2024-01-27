@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require 'classes/TaskManager.php';
+require_once 'classes/TaskManager.php';
 
 $taskManager = new TaskManager("tasks.txt");
 
@@ -37,13 +37,13 @@ try {
 <?php
 
 try {
-    $taskManager->completeTask("65b2810317baa");
+    $taskManager->completeTask("65b556ce05e28");
 } catch (Exception $e) {
      echo "Error: " . $e->getMessage();
 }
 
 try {
-    $taskManager->deleteTask("65b2825bb2e3e");
+    $taskManager->deleteTask("65b285704b734");
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage();
 }
